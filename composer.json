@@ -1,0 +1,16 @@
+{
+    "name": "parcelmonkeygroup/etrak-barcode",
+    "description": "Create eTrak barcodes",
+    "authors": [
+        {
+            "name": "Richard Barrett",
+            "email": "rich@parcelmonkey.com"
+        }
+    ],
+    "require": {},
+  	"autoload": {
+  		"classmap": [
+  		"src/eTrakBarcode.php"
+  		]
+  	}
+}
