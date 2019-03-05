@@ -8,7 +8,7 @@ class eTrakBarcode {
   var $origin;
   var $destination;
   var $service;
-  var $curl_timeout = 10;
+  var $curl_timeout = 5;
   
   var $qr_character_encoding = 'UTF-8';
   var $qr_error_correction_level = 'H'; // L [7% data loss], M [15% data loss], Q [25% data loss], H [30% data loss]
@@ -47,7 +47,17 @@ class eTrakBarcode {
   
   public function getDataUri() {
     
-    $data = $this->curl_get_data($this->getQrCodeUrl());    
+	  $providers = ['google','qrserver'];
+		
+		foreach($providers as $provider) {
+			
+	    $data = $this->curl_get_data($this->getQrCodeUrl($provider));
+			if($data['responseCode'] == 200) continue;
+			
+			// otherwise iterate to next provider
+			
+		}
+		
     $out = $data['data'];
     
     if($this->overlay_logo) $out = $this->gdOverlayLogo($out);
@@ -57,8 +67,15 @@ class eTrakBarcode {
     
   }
   
-  private function getQrCodeUrl() {
+  private function getQrCodeUrl($provider='google') {
     
+		$method = 'getQrCodeUrl_'.$provider;
+		return $this->$method();
+    
+  }
+	
+	private function getQrCodeUrl_google() {
+
     $query['chs'] = $this->qr_width.'x'.$this->qr_width;
     $query['cht'] = 'qr';
     $query['choe'] = $this->qr_character_encoding;
@@ -68,8 +85,24 @@ class eTrakBarcode {
     $body = $this->generateBody();
     $url = 'https://chart.googleapis.com/chart?'.http_build_query($query);
     return $url;
+		
+	}
+	
+	private function getQrCodeUrl_qrserver() {
+
+    $query['size'] = $this->qr_width.'x'.$this->qr_width;
+    $query['charset-source'] = $this->qr_character_encoding;
+    $query['charset-target'] = $this->qr_character_encoding;
+    $query['ecc'] = $this->qr_error_correction_level;
+		$query['margin'] = $this->qr_margin;
+    $query['data'] = $this->generateBody();
     
-  }
+    $body = $this->generateBody();
+    $url = 'https://api.qrserver.com/v1/create-qr-code/?'.http_build_query($query);
+		
+		return $url;
+		
+	}
   
   private function gdOverlayLogo($imagedata) {
 
@@ -102,13 +135,14 @@ class eTrakBarcode {
   private function curl_get_data($url) {
     
   	$ch = curl_init();
-  	$timeout = 10;
     curl_setopt($ch, CURLOPT_URL, $url);                                                               
   	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->curl_timeout);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);         
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);           
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);                                                                       
-
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 0); 
+		curl_setopt($ch, CURLOPT_TIMEOUT, $this->curl_timeout); //timeout in seconds
+		
   	$data = curl_exec($ch);
   	$contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
   	$responseCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
